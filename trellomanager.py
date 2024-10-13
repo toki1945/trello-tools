@@ -23,6 +23,7 @@ class TrelloManager:
             url,
             headers=headers,
             params=query,
+            json=data
             )
         else:
             response = requests.request(

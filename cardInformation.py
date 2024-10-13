@@ -17,8 +17,8 @@ class CardInformationWithDate(CardInformation):
         self.due = due
 
     def print_card_info(self):
-        start = self.convert_date(self.start).strftime("%Y-%m-%d %H:%S")
-        due = self.convert_date(self.due).strftime("%Y-%m-%d %H:%S")
+        start = self.convert_date(self.start).strftime("%Y-%m-%d %H:%M")
+        due = self.convert_date(self.due).strftime("%Y-%m-%d %H:%M")
 
         print(f"タスク名： {self.name}")
         [print(f"開始日: {start}") if start else print("start dose not exists")]
