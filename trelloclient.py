@@ -1,18 +1,14 @@
 #!/usr/bin/env python3
 import requests
 
-from commonlogger import Commonlogger
-
 GET = "GET"
 PUT = "PUT"
 POST = "POST"
 
-class TrelloManager:
+class TrelloClient:
     def __init__(self, api, token):
         self.api_key = api
         self.token = token
-        logger = Commonlogger("trello-manager").setup()
-        self.logger = logger
 
     def send_requests(self, url, data, method):
         headers = {"Accept": "application/json"}
