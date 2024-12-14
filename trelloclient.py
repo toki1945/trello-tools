@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
+import logging
+import logging.config
+
 import requests
+import yaml
+
+
+LOG_CONFIG = "logger.yaml"
+LOGGER_NAME = "trelloClient"
 
 GET = "GET"
 PUT = "PUT"
@@ -9,6 +17,12 @@ class TrelloClient:
     def __init__(self, api, token):
         self.api_key = api
         self.token = token
+
+        with open(LOG_CONFIG, "r", encoding="utf-8") as l:
+            yml = yaml.safe_load(l)
+
+        logging.config.dictConfig(yml)
+        self.logger = logging.getLogger(LOGGER_NAME)
 
     def send_requests(self, url, data, method):
         headers = {"Accept": "application/json"}
@@ -58,6 +72,12 @@ class TrelloClient:
     def get_cards(self, list_id):
         url = f"https://api.trello.com/1/lists/{list_id}/cards"
         result = self.send_requests(url, None, GET)
+
+        return result
+
+    def update_card(self, card_id, **kwargs):
+        url = f"https://api.trello.com/1/cards/{card_id}"
+        result = self.send_requests(url, kwargs, PUT)
 
         return result
 
