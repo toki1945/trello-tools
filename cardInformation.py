@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from checklist import CheckList
 from trelloclient import TrelloClient
@@ -16,3 +17,26 @@ class CardInformation:
             check_items_list.append(CheckList(check_items["name"], check_items["checkItems"]))
 
         return check_items_list
+
+    def get_due_date(self):
+        due = self.information.get("due", None)
+        if not due:
+            return
+
+        due_date = datetime.strptime(due, "%Y-%m-%dT%H:%M:%S.000Z")
+
+        return due_date + timedelta(hours=9)
+
+    def update_due_date_for_habit_card(self):
+        day = datetime.now()
+        today = datetime(day.year, day.month, day.day, hour=22, minute=0)
+
+        due_date = self.get_due_date()
+
+        if not due_date:
+            due_date = today - timedelta(hours=9) if day.hour < 22 else today + timedelta(hours=15)
+            return due_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+        if today.date() == due_date.date():
+            due_date = today - timedelta(hours=9) if day.hour < 22 else today + timedelta(hours=15)
+            return due_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")

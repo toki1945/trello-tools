@@ -12,6 +12,7 @@ from trelloclient import TrelloClient
 WORK_DIR = Path.cwd()
 LOG_DIR = WORK_DIR / "log"
 
+TARGET_LIST = "habit"
 
 SETTINGS_FILE = "settings.yaml"
 LOG_CONFIG = "logger.yaml"
@@ -43,14 +44,26 @@ def main():
 
     lists_on_board: dict = trello_client.get_lists_on_board(target_board["id"])
 
-    cards_on_list = trello_client.get_all_cards(lists_on_board)
-    for card in cards_on_list:
-        card_information = CardInformation(card["name"], card)
-        logger.info(f"card name: {card_information.name}")
+    target_list_information = lists_on_board[TARGET_LIST]
+    cards_on_list = trello_client.get_cards(target_list_information["id"])
 
-        due = card_information.get_due_date()
-        if due:
-            logger.info(f"due date: {due.strftime("%Y-%m%d %H:%M")}")
+    print_card_information(cards_on_list, logger, trello_client)
+
+
+def print_card_information(card_list, logger: logging, client: TrelloClient):
+    for card_on_list in card_list:
+        card_information = CardInformation(name=card_on_list["name"], information=card_on_list)
+        logger.info(f"card name = {card_information.name}")
+        update_due_date(card_information, logger, client)
+
+
+def update_due_date(card: CardInformation, logger: logging, client: TrelloClient):
+    new_due_date = card.update_due_date_for_habit_card()
+    if new_due_date:
+        client.update_card(card.information["id"], due=new_due_date)
+        logger.info(f">>>> update due date: {new_due_date}")
+    else:
+        logger.info(f"not update due date")
 
 # main
 if __name__ == "__main__":

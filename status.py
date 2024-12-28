@@ -13,6 +13,7 @@ from trelloclient import TrelloClient
 WORK_DIR = Path.cwd()
 LOG_DIR = WORK_DIR / "log"
 
+TARGET_LIST = "study"
 
 SETTINGS_FILE = "settings.yaml"
 LOG_CONFIG = "logger.yaml"
@@ -44,7 +45,7 @@ def main():
 
     lists_on_board: dict = trello_client.get_lists_on_board(target_board["id"])
 
-    target_list_information = lists_on_board[settings["board"]["myBoard"]["board_list"][1]]
+    target_list_information = lists_on_board[TARGET_LIST]
     cards_on_list = trello_client.get_cards(target_list_information["id"])
 
     print_card_information(cards_on_list, trello_client, logger)
