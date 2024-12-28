@@ -45,29 +45,30 @@ class TrelloClient:
 
         return response.json()
 
-    def get_user_id(self, trello_id):
+    def get_user_information(self, trello_id):
         url = f"https://api.trello.com/1/members/{trello_id}"
-        result = self.send_requests(url, None, GET)
-
-        return result["id"]
-
-    def get_board_id(self, trello_id):
-        url = f"https://api.trello.com/1/members/{trello_id}"
-        result = self.send_requests(url, None, GET)
-
-        return result["idBoards"]
-
-    def get_board_name(self, board_id):
-        url = f"https://api.trello.com/1/boards/{board_id}"
-        result = self.send_requests(url, None, GET)
-
-        return result["name"]
-
-    def get_lists_on_board(self, board_id):
-        url = f"https://api.trello.com/1/boards/{board_id}/lists"
         result = self.send_requests(url, None, GET)
 
         return result
+
+    def get_board_information(self, board_ids: list) -> dict:
+        board_information_list = []
+        for board_id in board_ids:
+            url = f"https://api.trello.com/1/boards/{board_id}"
+            result = self.send_requests(url, None, GET)
+            board_information_list.append(result)
+
+        board_dict = {board["name"]: board for board in board_information_list}
+
+        return board_dict
+
+    def get_lists_on_board(self, board_id: str) -> dict:
+        url = f"https://api.trello.com/1/boards/{board_id}/lists"
+        result = self.send_requests(url, None, GET)
+
+        list_dict = {list_on_board["name"]: list_on_board for list_on_board in result}
+
+        return list_dict
 
     def get_cards(self, list_id):
         url = f"https://api.trello.com/1/lists/{list_id}/cards"
@@ -81,8 +82,15 @@ class TrelloClient:
 
         return result
 
-    def get_check_list(self, check_list_id):
-        url = f"https://api.trello.com/1/checklists/{check_list_id}"
-        result = self.send_requests(url, None, GET)
+    def get_check_list(self, check_list_ids: list) -> dict:
+        checklist_information_list = []
+        for checklist_id in check_list_ids:
+            url = f"https://api.trello.com/1/checklists/{checklist_id}"
+            result = self.send_requests(url, None, GET)
+            checklist_information_list.append(result)
 
-        return result
+        checklist_information_list.sort(key=lambda x: x["pos"])
+
+        checklist = {checklist_information["name"]: checklist_information for checklist_information in checklist_information_list}
+
+        return checklist

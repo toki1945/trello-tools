@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import json
 import logging
 import logging.config
 from pathlib import Path
@@ -7,7 +6,7 @@ from pathlib import Path
 import yaml
 
 from cardInformation import CardInformation
-from checklist import CheckList
+from trello_operations import get_user_information, get_board_information, get_lists_on_board, get_cards_on_board
 from trelloclient import TrelloClient
 
 
@@ -15,13 +14,11 @@ WORK_DIR = Path.cwd()
 LOG_DIR = WORK_DIR / "log"
 
 
-SETTINGS_FILE = "settings.json"
-
-
+SETTINGS_FILE = "settings.yaml"
 LOG_CONFIG = "logger.yaml"
 LOGGER_NAME = "my_module"
 
-
+# 処理開始
 if __name__ == "__main__":
     if not LOG_DIR.exists():
         LOG_DIR.mkdir()
@@ -34,28 +31,23 @@ if __name__ == "__main__":
     logger = logging.getLogger(LOGGER_NAME)
 
     with open(SETTINGS_FILE, mode="r", encoding="utf-8") as f:
-        settings = json.load(f)
-
-    trello_user_name = settings["trelloId"]["name"]
-    target_board_name = settings["board"]["myBoard"]["name"]
-    target_list_name = settings["board"]["myBoard"]["list"][1]["name"]
+        settings = yaml.safe_load(f)
 
     trello_client = TrelloClient(settings["api"]["key"], settings["api"]["token"])
 
-    trello_id = trello_client.get_user_id(trello_user_name)
+    user_information = get_user_information(trello_client, settings["user"])
 
-    for board_id in trello_client.get_board_id(trello_user_name):
-        if target_board_name == trello_client.get_board_name(board_id):
-            logger.debug(f"target board: {target_board_name}")
-            lists_on_board = trello_client.get_lists_on_board(board_id)
-            break
+    board_information: dict = get_board_information(trello_client, user_information["idBoards"])
 
-    check_lists = []
-    for board_list in lists_on_board:
-        for target in [card for card in trello_client.get_cards(board_list["id"]) if trello_id in card['idMembers']]:
-            card_information = CardInformation(target["id"], target["name"])
-            check_lists.extend(card_information.get_check_list(trello_client, target["idChecklists"]))
+    target_board = board_information[settings["board"]["myBoard"]["name"]]
 
-    check_list: CheckList
-    for check_list in check_lists:
-        check_list.print_check_list()
+    lists_on_board: dict = get_lists_on_board(trello_client, target_board["id"])
+
+    target_list_name = settings["board"]["myBoard"]["board_list"][1]
+    target_list_information = lists_on_board[target_list_name]
+    cards_on_list = get_cards_on_board(trello_client, target_list_information["id"])
+
+    for card_on_list in cards_on_list:
+        card = CardInformation(name=card_on_list["name"], information=card_on_list)
+        check_list = trello_client.get_check_list(card.information["idChecklists"])
+        print(check_list)
