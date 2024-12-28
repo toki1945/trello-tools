@@ -6,6 +6,7 @@ from pathlib import Path
 import yaml
 
 from cardInformation import CardInformation
+from checklist import CheckList
 from trello_operations import get_user_information, get_board_information, get_lists_on_board, get_cards_on_board
 from trelloclient import TrelloClient
 
@@ -18,12 +19,8 @@ SETTINGS_FILE = "settings.yaml"
 LOG_CONFIG = "logger.yaml"
 LOGGER_NAME = "my_module"
 
-# 処理開始
-if __name__ == "__main__":
-    if not LOG_DIR.exists():
-        LOG_DIR.mkdir()
-        print("#### create log dir")
 
+def main():
     with open(LOG_CONFIG, "r", encoding="utf-8") as l:
         yml = yaml.safe_load(l)
 
@@ -43,11 +40,35 @@ if __name__ == "__main__":
 
     lists_on_board: dict = get_lists_on_board(trello_client, target_board["id"])
 
-    target_list_name = settings["board"]["myBoard"]["board_list"][1]
-    target_list_information = lists_on_board[target_list_name]
+    target_list_information = lists_on_board[settings["board"]["myBoard"]["board_list"][1]]
     cards_on_list = get_cards_on_board(trello_client, target_list_information["id"])
 
-    for card_on_list in cards_on_list:
+    print_card_information(cards_on_list, trello_client, logger)
+
+
+def print_card_information(card_list, trello_client: TrelloClient, logger: logging):
+    for card_on_list in card_list:
         card = CardInformation(name=card_on_list["name"], information=card_on_list)
-        check_list = trello_client.get_check_list(card.information["idChecklists"])
-        print(check_list)
+        logger.info(f"=============== card name = {card.name} ===============")
+
+        check_lists = trello_client.get_check_list(card.information["idChecklists"])
+        print_checklist_status(check_lists, logger)
+
+
+def print_checklist_status(check_items_list: dict, logger: logging):
+    for check_list_name, check_list_information in check_items_list.items():
+        check_items_list = CheckList(check_list_name, check_list_information)
+        logger.info(f"checkListName: {check_items_list.name}")
+
+        check_items_list: CheckList
+        for check_items in check_items_list.check_items_status():
+            logger.info(f"check_items: {check_items["name"]}, status: {check_items["state"]}")
+
+# create log dir
+if not LOG_DIR.exists():
+    LOG_DIR.mkdir()
+    print("#### create log dir")
+
+# main
+if __name__ == "__main__":
+    main()
