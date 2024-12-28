@@ -7,7 +7,6 @@ import yaml
 
 from cardInformation import CardInformation
 from checklist import CheckList
-from trello_operations import get_user_information, get_board_information, get_lists_on_board, get_cards_on_board
 from trelloclient import TrelloClient
 
 
@@ -30,18 +29,23 @@ def main():
     with open(SETTINGS_FILE, mode="r", encoding="utf-8") as f:
         settings = yaml.safe_load(f)
 
+    # create log dir
+    if not LOG_DIR.exists():
+        LOG_DIR.mkdir()
+        logger.info("#### create log dir")
+
     trello_client = TrelloClient(settings["api"]["key"], settings["api"]["token"])
 
-    user_information = get_user_information(trello_client, settings["user"])
+    user_information = trello_client.get_user_information(settings["user"])
 
-    board_information: dict = get_board_information(trello_client, user_information["idBoards"])
+    board_information: dict = trello_client.get_board_information(user_information["idBoards"])
 
     target_board = board_information[settings["board"]["myBoard"]["name"]]
 
-    lists_on_board: dict = get_lists_on_board(trello_client, target_board["id"])
+    lists_on_board: dict = trello_client.get_lists_on_board(target_board["id"])
 
     target_list_information = lists_on_board[settings["board"]["myBoard"]["board_list"][1]]
-    cards_on_list = get_cards_on_board(trello_client, target_list_information["id"])
+    cards_on_list = trello_client.get_cards(target_list_information["id"])
 
     print_card_information(cards_on_list, trello_client, logger)
 
@@ -62,12 +66,7 @@ def print_checklist_status(check_items_list: dict, logger: logging):
 
         check_items_list: CheckList
         for check_items in check_items_list.check_items_status():
-            logger.info(f"check_items: {check_items["name"]}, status: {check_items["state"]}")
-
-# create log dir
-if not LOG_DIR.exists():
-    LOG_DIR.mkdir()
-    print("#### create log dir")
+            logger.info(f'check_items: {check_items["name"]}, status: {check_items["state"]}')
 
 # main
 if __name__ == "__main__":

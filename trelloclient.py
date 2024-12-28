@@ -76,6 +76,14 @@ class TrelloClient:
 
         return result
 
+    def get_all_cards(self, list_ids: dict):
+        card_list = []
+        for list_id in list_ids.values():
+            cards = self.get_cards(list_id["id"])
+            card_list.extend(cards)
+
+        return card_list
+
     def update_card(self, card_id, **kwargs):
         url = f"https://api.trello.com/1/cards/{card_id}"
         result = self.send_requests(url, kwargs, PUT)

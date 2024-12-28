@@ -9,9 +9,9 @@ class CardInformation:
     name: str
     information: dict
 
-    def get_check_list_items(self, client: TrelloClient, cheklist_ids: list):
+    def get_check_list_items(self, client: TrelloClient, checklist_ids: list):
         check_items_list = []
-        for check_list_id in cheklist_ids:
+        for check_list_id in checklist_ids:
             check_items = client.get_check_list(check_list_id)
             check_items_list.append(CheckList(check_items["name"], check_items["checkItems"]))
 
