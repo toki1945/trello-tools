@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from datetime import datetime, timedelta
 import logging
 import logging.config
 
@@ -87,6 +88,13 @@ class TrelloClient:
     def update_card(self, card_id, **kwargs):
         url = f"https://api.trello.com/1/cards/{card_id}"
         result = self.send_requests(url, kwargs, PUT)
+
+        return result
+
+    def update_due_date(self, card_id, due_date: datetime):
+        due_date = due_date - timedelta(hours=9)
+        url = f"https://api.trello.com/1/cards/{card_id}"
+        result = self.send_requests(url, {"due": due_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")}, PUT)
 
         return result
 

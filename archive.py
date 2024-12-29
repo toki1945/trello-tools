@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
+from datetime import datetime, timedelta
 import logging
 import logging.config
 from pathlib import Path
+import re
 
 import yaml
 
@@ -12,11 +14,15 @@ from trelloclient import TrelloClient
 WORK_DIR = Path.cwd()
 LOG_DIR = WORK_DIR / "log"
 
-TARGET_LIST = "habit"
+TARGET_LIST = "completed"
 
 SETTINGS_FILE = "settings.yaml"
 LOG_CONFIG = "logger.yaml"
 LOGGER_NAME = "my_module"
+
+
+TODAY = datetime.now()
+DATE_FORMAT = re.compile(r"^[0-9]+-[0-9]+-[0-9]+")
 
 
 def main():
@@ -47,23 +53,20 @@ def main():
     target_list_information = lists_on_board[TARGET_LIST]
     cards_on_list = trello_client.get_cards(target_list_information["id"])
 
-    print_card_information(cards_on_list, logger, trello_client)
+    archieve_cards(cards_on_list, trello_client, logger)
 
 
-def print_card_information(card_list, logger: logging, client: TrelloClient):
-    for card_on_list in card_list:
-        card_information = CardInformation(name=card_on_list["name"], information=card_on_list)
-        logger.info(f"card name = {card_information.name}")
-        update_due_date(card_information, logger, client)
+def archieve_cards(cards_list, client: TrelloClient, logger: logging):
+    for card in cards_list:
+        card_information = CardInformation(name=card["name"], information=card)
+        logger.info(f"=============== card name = {card_information.name} ===============")
 
+        _last_activity = DATE_FORMAT.match(card_information.information["dateLastActivity"])
+        last_activity = datetime.strptime(_last_activity.group(), "%Y-%m-%d")
 
-def update_due_date(card: CardInformation, logger: logging, client: TrelloClient):
-    new_due_date = card.update_due_date_for_habit_card()
-    if new_due_date:
-        client.update_due_date(card.information["id"], new_due_date)
-        logger.info(f">>>> update due date: {new_due_date}")
-    else:
-        logger.info(f"not update due date")
+        if last_activity + timedelta(days=60) < TODAY:
+            client.update_card(card_information.information["id"], closed=True)
+            logger.info(f"{card_information.name} was archived")
 
 # main
 if __name__ == "__main__":

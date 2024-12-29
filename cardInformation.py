@@ -34,9 +34,9 @@ class CardInformation:
         due_date = self.get_due_date()
 
         if not due_date:
-            due_date = today - timedelta(hours=9) if day.hour < 22 else today + timedelta(hours=15)
-            return due_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+            due_date = today if day.hour < 22 else today + timedelta(hours=15)
+            return due_date
 
         if today.date() == due_date.date():
-            due_date = today - timedelta(hours=9) if day.hour < 22 else today + timedelta(hours=15)
-            return due_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+            due_date = today if day.hour < 22 else today + timedelta(hours=15)
+            return due_date
