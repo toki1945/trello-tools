@@ -26,23 +26,28 @@ class TrelloClient:
         self.logger = logging.getLogger(LOGGER_NAME)
 
     def send_requests(self, url, data, method):
-        headers = {"Accept": "application/json"}
-        query = {'key': self.api_key,'token': self.token}
-        if data:
-            response = requests.request(
-            method,
-            url,
-            headers=headers,
-            params=query,
-            json=data
+        try:
+            headers = {"Accept": "application/json"}
+            query = {'key': self.api_key,'token': self.token}
+            if data:
+                response = requests.request(
+                method,
+                url,
+                headers=headers,
+                params=query,
+                json=data
+                )
+            else:
+                response = requests.request(
+                method,
+                url,
+                headers=headers,
+                params=query,
             )
-        else:
-            response = requests.request(
-            method,
-            url,
-            headers=headers,
-            params=query,
-        )
+            status_code = response.status_code
+        except Exception:
+            self.logger.error(f"#### send_requests was not succeeded, status code = {status_code}")
+            return
 
         return response.json()
 

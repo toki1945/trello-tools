@@ -50,7 +50,7 @@ def main():
 
         due = card_information.get_due_date()
         if due:
-            logger.info(f"due date: {due.strftime("%Y-%m%d %H:%M")}")
+            logger.info(f"due date: {due.strftime("%Y-%m-%d %H:%M")}")
 
 # main
 if __name__ == "__main__":
