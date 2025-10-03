@@ -1,57 +1,78 @@
 #!/usr/bin/env python3
+import asyncio
 import logging
 import logging.config
 from pathlib import Path
 
 import yaml
 
-from cardInformation import CardInformation
-from trelloclient import TrelloClient
+from checklist import CheckList
+from trellomanager import TrelloManager
 
 
 WORK_DIR = Path.cwd()
 LOG_DIR = WORK_DIR / "log"
 
+TARGET_LIST = "study"
 
 SETTINGS_FILE = "settings.yaml"
 LOG_CONFIG = "logger.yaml"
 LOGGER_NAME = "my_module"
 
+trello_manager = None
 
-def main():
-    with open(LOG_CONFIG, "r", encoding="utf-8") as l:
-        yml = yaml.safe_load(l)
 
-    logging.config.dictConfig(yml)
-    logger = logging.getLogger(LOGGER_NAME)
+async def main():
+    try:
+        with open(LOG_CONFIG, "r", encoding="utf-8") as l:
+            yml = yaml.safe_load(l)
 
-    with open(SETTINGS_FILE, mode="r", encoding="utf-8") as f:
-        settings = yaml.safe_load(f)
+        logging.config.dictConfig(yml)
+        logger = logging.getLogger(LOGGER_NAME)
 
-    # create log dir
-    if not LOG_DIR.exists():
-        LOG_DIR.mkdir()
-        logger.info("#### create log dir")
+        with open(SETTINGS_FILE, mode="r", encoding="utf-8") as f:
+            settings = yaml.safe_load(f)
 
-    trello_client = TrelloClient(settings["api"]["key"], settings["api"]["token"])
+        LOG_DIR.mkdir(exist_ok=True)
 
-    user_information = trello_client.get_user_information(settings["user"])
+        trello_manager = TrelloManager(settings["api"]["key"], settings["api"]["token"])
 
-    board_information: dict = trello_client.get_board_information(user_information["idBoards"])
+        user_information = await trello_manager.get_user_information(settings["user"])
 
-    target_board = board_information[settings["board"]["myBoard"]["name"]]
+        board_information: dict = await trello_manager.get_board_information(user_information["idBoards"])
 
-    lists_on_board: dict = trello_client.get_lists_on_board(target_board["id"])
+        board = board_information[settings["targetboard"]["name"]]
 
-    cards_on_list = trello_client.get_all_cards(lists_on_board)
-    for card in cards_on_list:
-        card_information = CardInformation(card["name"], card)
-        logger.info(f"card name: {card_information.name}")
+        lists_on_board: dict = await trello_manager.get_lists_on_board(board["id"])
 
-        due = card_information.get_due_date()
-        if due:
-            logger.info(f"due date: {due.strftime("%Y-%m-%d %H:%M")}")
+        for list_on_board in lists_on_board.values():
+            logger.info("====================== リスト名: {} ======================".format(list_on_board["name"]))
+
+            cards_on_list = await trello_manager.get_cards_on_list(list_on_board["id"])
+
+            for card in cards_on_list:
+                logger.info(f"----------- カード名: {card.name}, id = {card.id}-----------")
+                checklist_ids = card.checklist_ids()
+                if not checklist_ids:
+                    continue
+
+                cheklists = await trello_manager.get_checklists(checklist_ids)
+
+                cheklist: CheckList
+                for cheklist in cheklists:
+                    logger.info("チェックリスト名: {}".format(cheklist.name))
+                    check_items = cheklist.items_status()
+                    logger.info("アイテム一覧")
+                    logger.info(check_items)
+
+
+    except Exception as e:
+        logger.error(e)
+
+    finally:
+        if trello_manager:
+            await trello_manager.client.aclose()
 
 # main
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

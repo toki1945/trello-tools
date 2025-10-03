@@ -1,5 +1,4 @@
-settings.json
 settings.yaml
 .venv
 log
-tmp1.py
+__pycache__
