@@ -13,10 +13,13 @@ class CheckItem:
 
 @dataclass
 class CheckList:
+    id: str
     name: str
     items: dict
+
 
     def items_status(self) -> list:
         check_items = [CheckItem(check_item["name"], check_item["pos"], check_item["state"]) for check_item in self.items["checkItems"]]
         return sorted(check_items, key=lambda item: item.pos)
+
 

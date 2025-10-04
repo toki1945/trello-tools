@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+"""
+https://developer.atlassian.com/cloud/trello/rest/api-group-actions/#api-group-actions
+"""
 import asyncio
 from datetime import datetime, timedelta
 import logging
@@ -24,6 +27,7 @@ class TrelloManager:
         self.token = token
         self.client = httpx.AsyncClient(headers=HEADER)
         self.end_point = "https://api.trello.com/1"
+        self.query = {'key': self.api_key,'token': self.token}
 
         with open(LOG_CONFIG, "r", encoding="utf-8") as l:
             yml = yaml.safe_load(l)
@@ -34,12 +38,11 @@ class TrelloManager:
 
     async def send_requests(self, url, method, data=None):
         try:
-            query = {'key': self.api_key,'token': self.token}
 
             response = await self.client.request(
                     method,
                     url,
-                    params=query,
+                    params=self.query,
                     json=data
                 )
 
@@ -79,18 +82,16 @@ class TrelloManager:
         return cards
 
 
+    async def get_card(self, card_id):
+        card = await self.send_requests(f"{self.end_point}/cards/{card_id}", "GET")
+        return Card(card["id"], card["name"], card)
+
+
     async def update_card(self, card_id, **kwargs):
-        url = f"{self.end_point}/cards/{card_id}"
-        result = self.send_requests(url, "PUT", kwargs)
-
+        result = await self.send_requests(f"{self.end_point}/cards/{card_id}", "PUT", kwargs)
+        self.logger.info("update card")
         return result
 
-    async def update_due_date(self, card_id, due_date: datetime):
-        due_date = due_date - timedelta(hours=9)
-        url = f"{self.end_point}/cards/{card_id}"
-        result = self.send_requests(url, "PUT", {"due": due_date.strftime("%Y-%m-%dT%H:%M:%S.000Z")})
-
-        return result
 
     async def get_checklists(self, checklist_ids: list) -> list:
         tasks = [self.send_requests(f"{self.end_point}/checklists/{checklist_id}", "GET") for checklist_id in checklist_ids]
@@ -99,4 +100,15 @@ class TrelloManager:
 
         checklist_informations.sort(key=lambda x: x["pos"])
 
-        return [CheckList(checklist_information["name"], checklist_information) for checklist_information in checklist_informations]
+        return [CheckList(checklist_information["id"], checklist_information["name"], checklist_information) for checklist_information in checklist_informations]
+
+
+    async def delete_checklists(self, checklist_id):
+        await self.send_requests(f"{self.end_point}/checklists/{checklist_id}", "DELETE")
+
+
+    async def create_checklists(self, card_id, checklist_id, name):
+        result = await self.send_requests(f"{self.end_point}/checklists", "POST", {"idCard": card_id, "name": name, "idChecklistSource": checklist_id})
+
+        return result
+
