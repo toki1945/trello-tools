@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-特定のリストにあるカード情報を取得
+特定のリストにあるカードの期限を本日に設定、チェックリストw初期化
 """
 import asyncio
+from datetime import datetime, timezone
 
 from checklist import CheckList
 from configmanager import LoggerConfigManager
@@ -14,6 +15,10 @@ LOGGER_NAME = "my_module"
 
 async def main():
     trello_manager = None
+    
+    today = datetime.now()
+    new_due = datetime(today.year, today.month, today.day, 22, 0).astimezone(timezone.utc)
+
     logger = LoggerConfigManager(LOGGER_NAME).setup_logger()
 
     args = TrelloManager.parse_argument()
@@ -36,27 +41,32 @@ async def main():
 
         lists_on_board: dict = await trello_manager.get_lists_on_board(target_board["id"])
 
+
         target_list_information = lists_on_board[target_list]
 
         cards_on_list = await trello_manager.get_cards_on_list(target_list_information["id"])
 
+        tasks = []
+        post_tasks = []
         for card in cards_on_list:
             logger.info(f"----------- カード名: {card.name}, id = {card.id}-----------")
+
+            tasks.append(trello_manager.update_card(card.id, due=new_due.strftime("%Y-%m-%dT%H:%M:%S.000Z")))
+
             checklist_ids = card.checklist_ids()
-            if not checklist_ids:
-                continue
+            if checklist_ids:
 
-            cheklists = await trello_manager.get_checklists(checklist_ids)
+                checklists = await trello_manager.get_checklists(checklist_ids)
 
-            cheklist: CheckList
-            for cheklist in cheklists:
-                logger.info("チェックリスト名: {}".format(cheklist.name))
-                check_items = cheklist.items_status()
-                logger.info("アイテム一覧")
-                logger.info(check_items)
+                checklist: CheckList
+                for checklist in checklists:
+                    tasks.append(trello_manager.create_checklists(card.id, checklist.id, checklist.name))
 
-    except KeyError as e:
-        logger.error(f"エラーが発生しました] {e}は存在しません")
+                    post_tasks.append(trello_manager.delete_checklists(checklist.id))
+
+        await asyncio.gather(*tasks)
+        await asyncio.gather(*post_tasks)
+
 
     except Exception as e:
         logger.error(e)

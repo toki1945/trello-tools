@@ -2,39 +2,42 @@
 """
 https://developer.atlassian.com/cloud/trello/rest/api-group-actions/#api-group-actions
 """
+import argparse
 import asyncio
-from datetime import datetime, timedelta
-import logging
-import logging.config
 
 import httpx
-import yaml
 
 from card import Card
 from checklist import CheckList
+from configmanager import LoggerConfigManager, TrelloConfigManager
 
 
 LOG_CONFIG = "logger.yaml"
-LOGGER_NAME = "trelloClient"
+LOGGER_NAME = "trelloManager"
 
 HEADER = {"Accept": "application/json"}
 
 
 class TrelloManager:
 
-    def __init__(self, api, token):
-        self.api_key = api
-        self.token = token
+    def __init__(self):
+        congig_manager = TrelloConfigManager()
+
+        self.user_id = congig_manager.settings["user"]
+        self.api_key = congig_manager.settings["api"]["key"]
+        self.token = congig_manager.settings["api"]["token"]
         self.client = httpx.AsyncClient(headers=HEADER)
         self.end_point = "https://api.trello.com/1"
         self.query = {'key': self.api_key,'token': self.token}
+        self.logger = LoggerConfigManager(LOGGER_NAME).setup_logger()
 
-        with open(LOG_CONFIG, "r", encoding="utf-8") as l:
-            yml = yaml.safe_load(l)
 
-        logging.config.dictConfig(yml)
-        self.logger = logging.getLogger(LOGGER_NAME)
-
+    @staticmethod
+    def parse_argument():
+        parser = argparse.ArgumentParser()
+        parser.add_argument("board", type=str)
+        parser.add_argument("-l","--list_name", type=str)
+        return parser.parse_args()
 
     async def send_requests(self, url, method, data=None):
         try:
@@ -89,7 +92,7 @@ class TrelloManager:
 
     async def update_card(self, card_id, **kwargs):
         result = await self.send_requests(f"{self.end_point}/cards/{card_id}", "PUT", kwargs)
-        self.logger.info("update card")
+        self.logger.info("カード情報を更新しました")
         return result
 
 

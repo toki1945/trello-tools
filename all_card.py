@@ -1,49 +1,34 @@
 #!/usr/bin/env python3
 import asyncio
-import logging
-import logging.config
-from pathlib import Path
-
-import yaml
 
 from checklist import CheckList
+from configmanager import LoggerConfigManager
 from trellomanager import TrelloManager
 
 
-WORK_DIR = Path.cwd()
-LOG_DIR = WORK_DIR / "log"
-
-TARGET_LIST = "study"
-
-SETTINGS_FILE = "settings.yaml"
-LOG_CONFIG = "logger.yaml"
 LOGGER_NAME = "my_module"
-
-trello_manager = None
 
 
 async def main():
+    trello_manager = None
+    logger = LoggerConfigManager(LOGGER_NAME).setup_logger()
+
+    args = TrelloManager.parse_argument()
+    target_board_name = args.board
+    target_list = args.list_name
+
     try:
-        with open(LOG_CONFIG, "r", encoding="utf-8") as l:
-            yml = yaml.safe_load(l)
 
-        logging.config.dictConfig(yml)
-        logger = logging.getLogger(LOGGER_NAME)
+        logger.info("ボード名: {}, 対象リスト = {}".format(target_board_name, target_list))
+        trello_manager = TrelloManager()
 
-        with open(SETTINGS_FILE, mode="r", encoding="utf-8") as f:
-            settings = yaml.safe_load(f)
-
-        LOG_DIR.mkdir(exist_ok=True)
-
-        trello_manager = TrelloManager(settings["api"]["key"], settings["api"]["token"])
-
-        user_information = await trello_manager.get_user_information(settings["user"])
+        user_information = await trello_manager.get_user_information(trello_manager.user_id)
 
         board_information: dict = await trello_manager.get_board_information(user_information["idBoards"])
 
-        board = board_information[settings["targetboard"]["name"]]
+        target_board = board_information[target_board_name]
 
-        lists_on_board: dict = await trello_manager.get_lists_on_board(board["id"])
+        lists_on_board: dict = await trello_manager.get_lists_on_board(target_board["id"])
 
         for list_on_board in lists_on_board.values():
             logger.info("====================== リスト名: {} ======================".format(list_on_board["name"]))
@@ -65,6 +50,8 @@ async def main():
                     logger.info("アイテム一覧")
                     logger.info(check_items)
 
+    except KeyError as e:
+        logger.error(f"エラーが発生しました] {e}は存在しません")
 
     except Exception as e:
         logger.error(e)
@@ -73,6 +60,6 @@ async def main():
         if trello_manager:
             await trello_manager.client.aclose()
 
-# main
+
 if __name__ == "__main__":
     asyncio.run(main())
