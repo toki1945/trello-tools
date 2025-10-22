@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import asyncio
 
-from checklist import CheckList
 from configmanager import LoggerConfigManager
 from trellomanager import TrelloManager
 
@@ -15,6 +14,11 @@ async def main():
 
     args = TrelloManager.parse_argument()
     target_board_name = args.board
+    if not args.list_name:
+        logger.error("リスト名を指定してください")
+        return
+
+    target_list_name = args.list_name
 
     try:
 
@@ -29,25 +33,20 @@ async def main():
 
         lists_on_board: dict = await trello_manager.get_lists_on_board(target_board["id"])
 
+        all_cards = []
         for list_on_board in lists_on_board.values():
-            logger.info("====================== リスト名: {} ======================".format(list_on_board["name"]))
-
             cards_on_list = await trello_manager.get_cards_on_list(list_on_board["id"])
+            all_cards.extend(cards_on_list)
 
-            for card in cards_on_list:
-                logger.info(f"----------- カード名: {card.name}, id = {card.id}-----------")
-                checklist_ids = card.checklist_ids()
-                if not checklist_ids:
-                    continue
+        my_cards = [card for card in all_cards if card.information["idMembers"] and user_information["id"] in card.information["idMembers"]]
 
-                cheklists = await trello_manager.get_checklists(checklist_ids)
+        tasks = []
+        for my_card in my_cards:
+            if "【週次】" not in my_card.name:
+                continue
+            tasks.append(trello_manager.create_card(lists_on_board[target_list_name]["id"], dueComplete=False, idCardSource=my_card.information["id"]))
 
-                cheklist: CheckList
-                for cheklist in cheklists:
-                    logger.info("チェックリスト名: {}".format(cheklist.name))
-                    check_items = cheklist.items_status()
-                    logger.info("アイテム一覧")
-                    logger.info(check_items)
+        await asyncio.gather(*tasks)
 
     except KeyError as e:
         logger.error(f"エラーが発生しました] {e}は存在しません")

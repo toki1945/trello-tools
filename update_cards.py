@@ -23,10 +23,10 @@ async def main():
 
     args = TrelloManager.parse_argument()
     target_board_name = args.board
-    target_list = args.list_name
-    if not target_list:
+    if not args.list_name:
         logger.info("引数にリスト名を渡してください")
         exit(2)
+    target_list = args.list_name
 
     try:
 

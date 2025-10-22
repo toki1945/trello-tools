@@ -21,15 +21,23 @@ HEADER = {"Accept": "application/json"}
 class TrelloManager:
 
     def __init__(self):
-        congig_manager = TrelloConfigManager()
+        config_manager = TrelloConfigManager()
 
-        self.user_id = congig_manager.settings["user"]
-        self.api_key = congig_manager.settings["api"]["key"]
-        self.token = congig_manager.settings["api"]["token"]
+        self.user_id = config_manager.settings["user"]
+        self.api_key = config_manager.settings["api"]["key"]
+        self.token = config_manager.settings["api"]["token"]
         self.client = httpx.AsyncClient(headers=HEADER)
         self.end_point = "https://api.trello.com/1"
         self.query = {'key': self.api_key,'token': self.token}
         self.logger = LoggerConfigManager(LOGGER_NAME).setup_logger()
+
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.client.aclose()
+        self.logger.info("TrelloManagerのリソースを解放しました")
 
 
     @staticmethod
@@ -37,6 +45,7 @@ class TrelloManager:
         parser = argparse.ArgumentParser()
         parser.add_argument("board", type=str)
         parser.add_argument("-l","--list_name", type=str)
+        parser.add_argument("-c","--card_name", type=str)
         return parser.parse_args()
 
     async def send_requests(self, url, method, data=None):
@@ -90,9 +99,21 @@ class TrelloManager:
         return Card(card["id"], card["name"], card)
 
 
+    async def create_card(self, list_id, **kwargs):
+        result = await self.send_requests(f"{self.end_point}/cards", "POST", {"idList": list_id, **kwargs})
+        self.logger.info("カードを作成しました")
+        return result
+
+
     async def update_card(self, card_id, **kwargs):
         result = await self.send_requests(f"{self.end_point}/cards/{card_id}", "PUT", kwargs)
         self.logger.info("カード情報を更新しました")
+        return result
+
+
+    async def archive_card(self, card_id,):
+        result = await self.send_requests(f"{self.end_point}/cards/{card_id}", "PUT", {"closed": True})
+        self.logger.info("カードをアーカイブしました")
         return result
 
 
